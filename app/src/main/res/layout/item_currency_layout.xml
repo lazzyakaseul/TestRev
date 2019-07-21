@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_margin="@dimen/activity_margin">
+
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="@dimen/touch_target_size"
+        android:layout_height="@dimen/touch_target_size"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:src="@drawable/ic_launcher_foreground"/>
+
+    <TextView
+        android:id="@+id/codeView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="@dimen/activity_margin"
+        android:textColor="@android:color/black"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintLeft_toRightOf="@+id/imageView"
+        app:layout_constraintBottom_toTopOf="@+id/descriptionView"
+        tools:text="EUR"/>
+
+    <TextView
+        android:id="@+id/descriptionView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:layout_constraintTop_toBottomOf="@+id/codeView"
+        app:layout_constraintLeft_toLeftOf="@+id/codeView"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:text="Euro asfjlajsf"/>
+
+    <EditText
+        android:id="@+id/valueView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:maxLength="13"
+        android:inputType="numberDecimal"
+        android:imeOptions="actionDone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        tools:text="12"/>
+
+</android.support.constraint.ConstraintLayout>
