@@ -2,6 +2,7 @@ package com.lazzy.testrev
 
 import android.app.Application
 import com.lazzy.testrev.di.AppComponent
+import com.lazzy.testrev.di.AppModule
 import com.lazzy.testrev.di.DaggerAppComponent
 
 class App : Application() {
@@ -17,6 +18,7 @@ class App : Application() {
         super.onCreate()
 
         appComponent = DaggerAppComponent.builder()
+            .appModule(AppModule(this))
             .build()
     }
 }

@@ -6,7 +6,7 @@ import com.lazzy.testrev.domain.entity.Course
 import com.lazzy.testrev.domain.entity.Currency
 import com.lazzy.testrev.domain.entity.convertToCurrenciesList
 import com.lazzy.testrev.viewobjects.CurrencyVO
-import com.lazzy.testrev.viewobjects.convertToEntity
+import com.lazzy.testrev.viewobjects.FlagBitmapFactory
 import com.lazzy.testrev.viewobjects.convertToViewObject
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -21,7 +21,8 @@ import javax.inject.Singleton
 
 @Singleton
 class MainPresenterImpl @Inject constructor(
-    private val receiveCurrenciesUseCase: ReceiveCurrenciesUseCase
+    private val receiveCurrenciesUseCase: ReceiveCurrenciesUseCase,
+    private val flagFactory: FlagBitmapFactory
 ) : MainPresenter {
 
     private var view: MainView? = null
@@ -43,8 +44,26 @@ class MainPresenterImpl @Inject constructor(
             }
             .subscribeOn(Schedulers.computation())
             .subscribe()
+    }
 
 
+    override fun attachView(view: MainView) {
+        this.view = view
+        observeData()
+    }
+
+    override fun detachView() {
+        view = null
+        compositeDisposable.clear()
+    }
+
+    override fun onCurrencySelected(currency: CurrencyVO) =
+        currentBaseSubject.onNext(currency.code)
+
+    override fun updateSelectedCurrency(newValue: Double) =
+        currentValueSubject.onNext(newValue)
+
+    private fun observeData() {
         currentBaseSubject
             .flatMapSingle { base -> currenciesSubject.firstOrError().map { base to it } }
             .map { (base, currencies) ->
@@ -70,7 +89,7 @@ class MainPresenterImpl @Inject constructor(
                                         it.code,
                                         course.currencies[it.code]?.times(currentValue) ?: 0.0
                                     )
-                                } else it
+                                } else it.copy(value = currentValue)
                             }
                         }
                     }
@@ -78,130 +97,30 @@ class MainPresenterImpl @Inject constructor(
             .subscribeOn(Schedulers.computation())
             .subscribe(
                 { currenciesSubject.onNext(it) },
-                { Log.e("ERROR", it.message ?: it.toString()) }
+                {
+                    Log.e("Exception", it.message ?: it.toString())
+                    it.localizedMessage?.apply { view?.showError(this) }
+                }
             )
             .composite(compositeDisposable)
 
-        /*currentBaseSubject
-            .distinctUntilChanged { current: Currency -> current.code }
-            .flatMapSingle { current -> currenciesSubject.firstOrError().map { current to it } }
-            .map { (current, currencies) ->
-                currencies.toMutableList().apply {
-                    find { it.code == current.code }?.apply { remove(this)}
-                    add(0, current)
+        currenciesSubject
+            .map { currencies ->
+                mutableListOf(
+                    currencies.first()
+                        .convertToViewObject(flagFactory, true)
+                ).apply {
+                    addAll(currencies.drop(1)
+                        .map { it.convertToViewObject(flagFactory) })
                 }
             }
-            .subscribeOn(Schedulers.computation())
-            .subscribe {
-                currenciesSubject.onNext(it)
-            }
-            .composite(compositeDisposable)*/
-
-        currenciesSubject
-            .map { currencies -> currencies.map { it.convertToViewObject() } }
             .subscribeOn(Schedulers.computation())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe { view?.showCurrencies(it) }
             .composite(compositeDisposable)
     }
 
-
-    override fun attachView(view: MainView) {
-        this.view = view
-    }
-
-    override fun detachView() {
-        view = null
-    }
-
-    override fun onCurrencySelected(currency: CurrencyVO) =
-        currentBaseSubject.onNext(currency.code)
-
-    override fun updateSelectedCurrency(newValue: Double) =
-        currentValueSubject.onNext(newValue)
-
     private fun Disposable.composite(compositeDisposable: CompositeDisposable) =
         compositeDisposable.add(this)
 
 }
-
-
-//private val currentBaseSubject = BehaviorSubject.create<Currency>()
-//private val currenciesSubject = BehaviorSubject.create<List<Currency>>().toSerialized()
-//private val compositeDisposable = CompositeDisposable()
-
-//init {
-//    receiveCurrenciesUseCase.receiveCurrencies()
-//        .doOnSuccess {
-//            //                currentBaseSubject.onNext(MainPresenter.CurrencyCommand.Swap(it.base.convertToViewObject()))
-//            currentBaseSubject.onNext(it.base)
-//            val result = mutableListOf(it.base).apply {
-//                addAll(it.currencies.convertToCurrenciesList())
-//            }
-//            this.currenciesSubject.onNext(result)
-//        }
-//        .subscribeOn(Schedulers.computation())
-//        .subscribe()
-//
-//    Observable.combineLatest(
-//        currentBaseSubject.distinctUntilChanged { old, new -> old.code == new.code },
-//        Observable.interval(1, TimeUnit.SECONDS)
-//            .flatMapSingle { currentBaseSubject.firstOrError() }
-//            .flatMapSingle { receiveCurrenciesUseCase.receiveCurrencies(it) },
-//        BiFunction { current: Currency, course: Course -> current to course }
-//    )
-//        .flatMapSingle { (current, course) ->
-//            currenciesSubject.firstOrError().map { Triple(current, course, it) }
-//        }
-//        .map { (current, course, currencies) ->
-//            currencies.toMutableList()
-//                .run {
-//                    map {
-//                        if (current.code != it.code) {
-//                            Currency(
-//                                it.code,
-//                                course.currencies[it.code]?.times(current.value) ?: 0.0
-//                            )
-//                        } else it
-//                    }
-//                }
-//        }
-//        .subscribeOn(Schedulers.computation())
-//        .subscribe(
-//            { currenciesSubject.onNext(it) },
-//            { Log.e("ERROR", it.message ?: it.toString()) }
-//        )
-//        .composite(compositeDisposable)
-//
-//    currentBaseSubject
-//        .distinctUntilChanged { current: Currency -> current.code }
-//        .flatMapSingle { current -> currenciesSubject.firstOrError().map { current to it } }
-//        .map { (current, currencies) ->
-//            currencies.toMutableList().apply {
-//                find { it.code == current.code }?.apply { remove(this)}
-//                add(0, current)
-//            }
-//        }
-//        .subscribeOn(Schedulers.computation())
-//        .subscribe {
-//            currenciesSubject.onNext(it)
-//        }
-//        .composite(compositeDisposable)
-//
-//    currenciesSubject
-//        .map { currencies -> currencies.map { it.convertToViewObject() } }
-//        .subscribeOn(Schedulers.computation())
-//        .observeOn(AndroidSchedulers.mainThread())
-//        .subscribe { view?.showCurrencies(it) }
-//        .composite(compositeDisposable)
-//}
-
-//override fun onCurrencySelected(currency: CurrencyVO) =
-//    currentBaseSubject.onNext(currency.convertToEntity())
-//
-//override fun updateSelectedCurrency(newValue: Double) {
-//    currentBaseSubject
-//        .firstOrError()
-//        .doOnSuccess { currentBaseSubject.onNext(Currency(it.code, newValue)) }
-//        .subscribe()
-//}

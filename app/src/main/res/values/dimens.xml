@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <dimen name="activity_margin">16dp</dimen>
+    <dimen name="card_margin">4dp</dimen>
     <dimen name="activity_spacing">8dp</dimen>
     <dimen name="touch_target_size">48dp</dimen>
+    <dimen name="code_text_size">20sp</dimen>
+    <dimen name="value_text_size">18sp</dimen>
 </resources>

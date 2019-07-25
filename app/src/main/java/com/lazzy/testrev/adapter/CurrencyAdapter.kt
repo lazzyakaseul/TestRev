@@ -7,16 +7,30 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import com.bumptech.glide.Glide
 import com.lazzy.testrev.R
 import com.lazzy.testrev.viewobjects.CurrencyVO
 import kotlinx.android.synthetic.main.item_currency_layout.view.*
 
-class CurrencyAdapter(private val listener: (CurrencyVO) -> Unit)
-    : RecyclerView.Adapter<CurrencyAdapter.CurrencyHolder>() {
+
+class CurrencyAdapter(
+    private val selectListener: (CurrencyVO) -> Unit,
+    private val updateValueListener: (Double) -> Unit
+) : RecyclerView.Adapter<CurrencyAdapter.CurrencyHolder>() {
 
     private var currencies: List<CurrencyVO> = emptyList()
     private val currencyDiffUtil = CurrencyDiffUtil()
+    private var focusedView: EditText? = null
+
+    private val watcher = object : TextWatcher {
+        override fun afterTextChanged(source: Editable?) {
+            updateValueListener(source.toString().toDouble())
+        }
+
+        override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
+        override fun onTextChanged(sequence: CharSequence?, start: Int, before: Int, count: Int) {}
+    }
 
     override fun onCreateViewHolder(container: ViewGroup, pos: Int): CurrencyHolder =
         CurrencyHolder(
@@ -44,6 +58,9 @@ class CurrencyAdapter(private val listener: (CurrencyVO) -> Unit)
             if (old.value != new.value) {
                 holder.bind(new.value)
             }
+            if (old.isBase != new.isBase) {
+                super.onBindViewHolder(holder, position, payloads)
+            }
         }
     }
 
@@ -63,31 +80,45 @@ class CurrencyAdapter(private val listener: (CurrencyVO) -> Unit)
 
         init {
             itemView.setOnClickListener {
-                currency?.apply(listener)
-//                valueView.addTextChangedListener(object : TextWatcher {
-//                    override fun afterTextChanged(p0: Editable?) {}
-//
-//                    override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-//
-//                    override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-//                })
-//                valueView.removeTextChangedListener()
+                currency?.apply(selectListener)
+                focusedView?.clearFocus()
             }
         }
 
         fun bind(item: CurrencyVO) {
             currency = item
+            if (item.isBase) {
+                focusedView = valueView
+                valueView.filters =
+                    arrayOf(DecimalDigitsInputFilter(DIGITS_BEFORE_ZERO, DIGITS_AFTER_ZERO))
+                valueView?.addTextChangedListener(watcher)
+                focusedView?.requestFocus()
+            } else {
+                valueView.filters = emptyArray()
+                valueView?.removeTextChangedListener(watcher)
+            }
             codeView.text = item.code
             descriptionView.text = item.description
-            valueView.setText(item.value.toString())
+            valueView.apply {
+                setText(item.value)
+                isFocusable = item.isBase
+                isFocusableInTouchMode = item.isBase
+            }
             Glide.with(itemView.context)
                 .load(item.image)
                 .into(imageView)
         }
 
-        fun bind(value: Double) {
-            valueView.setText(value.toString())
+        fun bind(value: String) {
+            valueView.setText(value)
         }
+
+    }
+
+    companion object {
+
+        private const val DIGITS_BEFORE_ZERO = 6
+        private const val DIGITS_AFTER_ZERO = 2
 
     }
 

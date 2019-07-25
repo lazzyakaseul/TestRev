@@ -42,6 +42,7 @@ dependencies {
     implementation deps.okHttpLoggingInterceptor
     implementation deps.retrofitConverterJson
     implementation deps.retrofitAdapterRxJava
+    implementation deps.androidSupportCardViewV7
 
     implementation 'com.google.dagger:dagger-android-support:2.22.1'
 

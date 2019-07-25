@@ -1,5 +1,6 @@
 package com.lazzy.testrev.di
 
+import android.content.Context
 import com.google.gson.GsonBuilder
 import com.lazzy.testrev.BuildConfig
 import com.lazzy.testrev.BuildConfig.BASE_URL
@@ -13,6 +14,7 @@ import com.lazzy.testrev.data.parser.ResponseParser
 import com.lazzy.testrev.domain.ReceiveCurrenciesProvider
 import com.lazzy.testrev.domain.ReceiveCurrenciesUseCase
 import com.lazzy.testrev.domain.ReceiveCurrenciesUseCaseImpl
+import com.lazzy.testrev.viewobjects.FlagBitmapFactory
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -26,7 +28,7 @@ import javax.inject.Singleton
 
 
 @Module(includes = [AppModule.Bindings::class])
-class AppModule {
+class AppModule(private val context: Context) {
 
     @Singleton
     @Provides
@@ -34,7 +36,8 @@ class AppModule {
         OkHttpClient.Builder()
             .addInterceptor(
                 HttpLoggingInterceptor()
-                    .setLevel(if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE))
+                    .setLevel(if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE)
+            )
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(10, TimeUnit.SECONDS)
             .build().run {
@@ -53,6 +56,14 @@ class AppModule {
     @Singleton
     @Provides
     fun provideServerApi(retrofit: Retrofit): RevApi = retrofit.create(RevApi::class.java)
+
+    @Singleton
+    @Provides
+    fun provideAppContext(): Context = context
+
+    @Singleton
+    @Provides
+    fun provideBitmapFactory(context: Context) = FlagBitmapFactory(context)
 
     @Module
     interface Bindings {

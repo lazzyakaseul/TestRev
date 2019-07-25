@@ -4,4 +4,9 @@
     android:id="@+id/currenciesView"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:listitem="@layout/item_currency_layout" />
+    android:background="@android:color/white"
+    tools:listitem="@layout/item_currency_layout">
+
+    <requestFocus />
+
+</android.support.v7.widget.RecyclerView>
