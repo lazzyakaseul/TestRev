@@ -6,6 +6,16 @@ interface MainView {
 
     fun showCurrencies(currencies: List<CurrencyVO>)
 
-    fun showError(error: String)
+    fun blockCurrencyUpdates()
+
+    fun allowCurrencyUpdates()
+
+    fun showErrorUpdating()
+
+    fun showErrorScreen()
+
+    fun showSuccessScreen()
+
+    fun showProgressState()
 
 }

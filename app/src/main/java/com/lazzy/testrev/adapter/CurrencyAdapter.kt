@@ -22,10 +22,13 @@ class CurrencyAdapter(
     private var currencies: List<CurrencyVO> = emptyList()
     private val currencyDiffUtil = CurrencyDiffUtil()
     private var focusedView: EditText? = null
+    private var updatesAllowed = true
 
     private val watcher = object : TextWatcher {
         override fun afterTextChanged(source: Editable?) {
-            updateValueListener(source.toString().toDouble())
+            if (updatesAllowed) {
+                updateValueListener(source.toString().toDoubleOrNull() ?: 0.0)
+            }
         }
 
         override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
@@ -55,11 +58,10 @@ class CurrencyAdapter(
         } else {
             val old = (payloads.first() as CurrencyDiffUtil.Update).oldItem
             val new = (payloads.last() as CurrencyDiffUtil.Update).newItem
-            if (old.value != new.value) {
-                holder.bind(new.value)
-            }
             if (old.isBase != new.isBase) {
-                super.onBindViewHolder(holder, position, payloads)
+                onBindViewHolder(holder, position)
+            } else if (old.value != new.value) {
+                holder.bindValue(new)
             }
         }
     }
@@ -68,6 +70,10 @@ class CurrencyAdapter(
         DiffUtil.calculateDiff(currencyDiffUtil.init(this.currencies, currencies))
             .dispatchUpdatesTo(this)
         this.currencies = currencies
+    }
+
+    fun setUpdatesAllowed(allowed: Boolean) {
+        updatesAllowed = allowed
     }
 
     inner class CurrencyHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -87,37 +93,41 @@ class CurrencyAdapter(
 
         fun bind(item: CurrencyVO) {
             currency = item
-            if (item.isBase) {
-                focusedView = valueView
-                valueView.filters =
-                    arrayOf(DecimalDigitsInputFilter(DIGITS_BEFORE_ZERO, DIGITS_AFTER_ZERO))
-                valueView?.addTextChangedListener(watcher)
-                focusedView?.requestFocus()
-            } else {
-                valueView.filters = emptyArray()
+            if (!item.isBase) {
                 valueView?.removeTextChangedListener(watcher)
             }
             codeView.text = item.code
             descriptionView.text = item.description
+            valueView.filters = arrayOf(DecimalDigitsInputFilter(DIGITS_AFTER_ZERO))
             valueView.apply {
                 setText(item.value)
+                setSelection(item.value.length)
                 isFocusable = item.isBase
                 isFocusableInTouchMode = item.isBase
+            }
+            if (item.isBase) {
+                focusedView = valueView
+                valueView?.addTextChangedListener(watcher)
+                focusedView?.requestFocus()
             }
             Glide.with(itemView.context)
                 .load(item.image)
                 .into(imageView)
         }
 
-        fun bind(value: String) {
-            valueView.setText(value)
+        fun bindValue(currency: CurrencyVO) {
+            this@CurrencyHolder.currency = currency
+            currency.value.apply {
+                if (valueView != focusedView) {
+                    valueView.setText(this)
+                }
+            }
         }
 
     }
 
     companion object {
 
-        private const val DIGITS_BEFORE_ZERO = 6
         private const val DIGITS_AFTER_ZERO = 2
 
     }

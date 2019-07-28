@@ -8,6 +8,7 @@ import com.lazzy.testrev.domain.entity.convertToCurrenciesList
 import com.lazzy.testrev.viewobjects.CurrencyVO
 import com.lazzy.testrev.viewobjects.FlagBitmapFactory
 import com.lazzy.testrev.viewobjects.convertToViewObject
+import io.reactivex.Completable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
@@ -29,23 +30,14 @@ class MainPresenterImpl @Inject constructor(
     private val currentBaseSubject = BehaviorSubject.create<String>()
     private val currentValueSubject = BehaviorSubject.create<Double>()
     private val currenciesSubject = BehaviorSubject.create<List<Currency>>()
+    private val stateSubject =
+        BehaviorSubject.createDefault<MainPresenter.ScreenState>(MainPresenter.ScreenState.Loading)
 
     private val compositeDisposable = CompositeDisposable()
 
     init {
-        receiveCurrenciesUseCase.receiveCurrencies()
-            .doOnSuccess {
-                currentBaseSubject.onNext(it.base.code)
-                currentValueSubject.onNext(it.base.value)
-                val result = mutableListOf(it.base).apply {
-                    addAll(it.currencies.convertToCurrenciesList())
-                }
-                this.currenciesSubject.onNext(result)
-            }
-            .subscribeOn(Schedulers.computation())
-            .subscribe()
+        receiveData()
     }
-
 
     override fun attachView(view: MainView) {
         this.view = view
@@ -57,15 +49,38 @@ class MainPresenterImpl @Inject constructor(
         compositeDisposable.clear()
     }
 
+    override fun receiveData() {
+        stateSubject.onNext(MainPresenter.ScreenState.Loading)
+        @Suppress
+        receiveCurrenciesUseCase.receiveCurrencies()
+            .doOnSuccess {
+                currentValueSubject.onNext(it.base.value)
+                currentBaseSubject.onNext(it.base.code)
+                val result = mutableListOf(it.base).apply {
+                    addAll(it.currencies.convertToCurrenciesList())
+                }
+                this.currenciesSubject.onNext(result)
+                stateSubject.onNext(MainPresenter.ScreenState.Success)
+            }
+            .doOnError { stateSubject.onNext(MainPresenter.ScreenState.ErrorLoading) }
+            .subscribeOn(Schedulers.computation())
+            .subscribe({}, {})
+    }
+
     override fun onCurrencySelected(currency: CurrencyVO) =
         currentBaseSubject.onNext(currency.code)
 
-    override fun updateSelectedCurrency(newValue: Double) =
+    override fun updateSelectedCurrency(newValue: Double) {
         currentValueSubject.onNext(newValue)
+    }
 
     private fun observeData() {
         currentBaseSubject
-            .flatMapSingle { base -> currenciesSubject.firstOrError().map { base to it } }
+            .doOnNext { stateSubject.onNext(MainPresenter.ScreenState.UpdatesBlocked) }
+            .flatMapSingle { base ->
+                currenciesSubject.firstOrError()
+                    .map { base to it }
+            }
             .map { (base, currencies) ->
                 base to currencies.toMutableList().apply {
                     find { it.code == base }?.apply {
@@ -74,11 +89,15 @@ class MainPresenterImpl @Inject constructor(
                     }
                 }
             }
-            .switchMap { (base, currencies) ->
+            .switchMapCompletable { (base, currencies) ->
                 Observable.combineLatest(
                     currentValueSubject,
                     Observable.interval(1, TimeUnit.SECONDS)
-                        .flatMapSingle { receiveCurrenciesUseCase.receiveCurrencies(base) },
+                        .concatMapSingle { receiveCurrenciesUseCase.receiveCurrencies(base) }
+                        .doOnError {
+                            stateSubject.onNext(MainPresenter.ScreenState.ErrorUpdating(it))
+                        }
+                        .retry(),
                     BiFunction { currentValue: Double, course: Course -> currentValue to course }
                 )
                     .map { (currentValue, course) ->
@@ -93,30 +112,49 @@ class MainPresenterImpl @Inject constructor(
                             }
                         }
                     }
+                    .doOnNext { currenciesSubject.onNext(it) }
+                    .map {
+                        mutableListOf(
+                            it.first()
+                                .convertToViewObject(flagFactory, true)
+                        ).apply {
+                            addAll(it.drop(1)
+                                .map { it.convertToViewObject(flagFactory) })
+                        }
+                    }
+                    .flatMapCompletable {
+                        Completable.fromAction {
+                            stateSubject.onNext(MainPresenter.ScreenState.UpdateCurrencies(it))
+                        }
+                            .andThen { stateSubject.onNext(MainPresenter.ScreenState.UpdatesAllowed) }
+                    }
+                    .subscribeOn(Schedulers.computation())
             }
             .subscribeOn(Schedulers.computation())
-            .subscribe(
-                { currenciesSubject.onNext(it) },
-                {
-                    Log.e("Exception", it.message ?: it.toString())
-                    it.localizedMessage?.apply { view?.showError(this) }
-                }
-            )
+            .subscribe({}, { Log.e("Exception", it.message ?: it.toString()) })
             .composite(compositeDisposable)
 
-        currenciesSubject
-            .map { currencies ->
-                mutableListOf(
-                    currencies.first()
-                        .convertToViewObject(flagFactory, true)
-                ).apply {
-                    addAll(currencies.drop(1)
-                        .map { it.convertToViewObject(flagFactory) })
+        stateSubject
+            .observeOn(AndroidSchedulers.mainThread())
+            .doOnNext {
+                when (it) {
+                    is MainPresenter.ScreenState.ErrorUpdating ->
+                        view?.showErrorUpdating()
+                    is MainPresenter.ScreenState.UpdateCurrencies ->
+                        view?.showCurrencies(it.currencies)
+                    is MainPresenter.ScreenState.UpdatesBlocked ->
+                        view?.blockCurrencyUpdates()
+                    is MainPresenter.ScreenState.UpdatesAllowed ->
+                        view?.allowCurrencyUpdates()
+                    is MainPresenter.ScreenState.ErrorLoading ->
+                        view?.showErrorScreen()
+                    is MainPresenter.ScreenState.Success ->
+                        view?.showSuccessScreen()
+                    is MainPresenter.ScreenState.Loading ->
+                        view?.showProgressState()
                 }
             }
-            .subscribeOn(Schedulers.computation())
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe { view?.showCurrencies(it) }
+            .subscribe()
             .composite(compositeDisposable)
     }
 

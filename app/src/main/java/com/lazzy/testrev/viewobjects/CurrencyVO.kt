@@ -8,4 +8,9 @@ data class CurrencyVO(
     val description: String,
     val image: Bitmap?,
     val isBase: Boolean
-)
+) {
+
+    override fun toString(): String {
+        return "$code $value $isBase"
+    }
+}

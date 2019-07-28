@@ -5,11 +5,12 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="@dimen/card_margin"
-    android:layout_marginTop="@dimen/activity_margin"
+    android:layout_marginTop="@dimen/activity_spacing"
     android:layout_marginEnd="@dimen/card_margin"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?android:attr/selectableItemBackground"
+    app:cardElevation="8dp"
     app:cardCornerRadius="8dp">
 
     <android.support.constraint.ConstraintLayout
@@ -22,7 +23,7 @@
             android:layout_width="@dimen/touch_target_size"
             android:layout_height="@dimen/touch_target_size"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             tools:src="@drawable/ic_launcher_foreground" />
 
@@ -34,37 +35,47 @@
             android:textColor="@android:color/black"
             android:textSize="@dimen/code_text_size"
             app:layout_constraintBottom_toTopOf="@+id/descriptionView"
-            app:layout_constraintLeft_toRightOf="@+id/imageView"
+            app:layout_constraintStart_toEndOf="@+id/imageView"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="EUR" />
+            tools:text="NZD" />
 
         <TextView
             android:id="@+id/descriptionView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="@+id/codeView"
+            app:layout_constraintEnd_toStartOf="@+id/guideline"
             app:layout_constraintTop_toBottomOf="@+id/codeView"
-            tools:text="Euro asfjlajsf" />
+            app:layout_constraintStart_toStartOf="@+id/codeView"
+            tools:text="New Zealand Dollar" />
+
+        <android.support.constraint.Guideline
+            android:id="@+id/guideline"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.4" />
 
         <EditText
             android:id="@+id/valueView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="@dimen/activity_margin"
-            android:clickable="true"
+            android:gravity="end"
             android:ellipsize="end"
             android:imeOptions="actionDone"
             android:inputType="numberDecimal"
             android:lines="1"
-            android:maxLength="18"
             android:textSize="@dimen/value_text_size"
+            android:hint="@string/empty_hint"
+            android:scrollHorizontally="true"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="1"
-            app:layout_constraintStart_toEndOf="@+id/descriptionView"
+            app:layout_constrainedWidth="true"
             app:layout_constraintTop_toTopOf="parent"
-            tools:text="999999.10" />
+            app:layout_constraintStart_toEndOf="@+id/guideline"
+            tools:text="43214876543219999999.10" />
 
     </android.support.constraint.ConstraintLayout>
 

@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">TestRev</string>
+    <string name="empty_hint">0</string>
+    <string name="error_updating">Caught error updating the list of currencies</string>
+    <string name="error_text">Some error occurred, press "Retry" to refresh the page</string>
+    <string name="retry">Retry</string>
 </resources>
