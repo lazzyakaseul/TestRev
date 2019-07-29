@@ -1,7 +1,7 @@
-package com.lazzy.testrev.adapter
+package com.lazzy.testrev.presentation.adapter
 
 import android.support.v7.util.DiffUtil
-import com.lazzy.testrev.viewobjects.CurrencyVO
+import com.lazzy.testrev.presentation.viewobjects.CurrencyVO
 
 class CurrencyDiffUtil : DiffUtil.Callback() {
 

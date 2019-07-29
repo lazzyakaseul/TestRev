@@ -13,9 +13,6 @@ android {
         targetSdkVersion androidTargetSdkVersion
         versionCode 1
         versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField "String", "BASE_URL", "\"https://revolut.duckdns.org\""
     }
     buildTypes {
         release {
@@ -33,23 +30,19 @@ dependencies {
     implementation deps.androidSupportAppCompatV7
     implementation deps.androidSupportRecyclerViewV7
     implementation deps.androidSupportConstraintLayout
+    implementation deps.androidSupportCardViewV7
     implementation deps.glide
+    implementation deps.retrofit
+
+    implementation deps.moxy
 
     implementation deps.rxJava
     implementation deps.rxAndroid
-    implementation deps.gson
-    implementation deps.retrofit
-    implementation deps.okHttpLoggingInterceptor
-    implementation deps.retrofitConverterJson
-    implementation deps.retrofitAdapterRxJava
-    implementation deps.androidSupportCardViewV7
 
-    implementation 'com.google.dagger:dagger-android-support:2.22.1'
+    implementation deps.daggerAndroidSupport
 
+    kapt deps.moxyCompiler
     kapt deps.daggerCompiler
     kapt deps.daggerAndroidProcessor
 
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 }

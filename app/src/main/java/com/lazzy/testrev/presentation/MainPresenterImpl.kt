@@ -1,13 +1,15 @@
-package com.lazzy.testrev
+package com.lazzy.testrev.presentation
 
 import android.util.Log
+import com.arellomobile.mvp.InjectViewState
+import com.arellomobile.mvp.MvpPresenter
 import com.lazzy.testrev.domain.ReceiveCurrenciesUseCase
 import com.lazzy.testrev.domain.entity.Course
 import com.lazzy.testrev.domain.entity.Currency
 import com.lazzy.testrev.domain.entity.convertToCurrenciesList
-import com.lazzy.testrev.viewobjects.CurrencyVO
-import com.lazzy.testrev.viewobjects.FlagBitmapFactory
-import com.lazzy.testrev.viewobjects.convertToViewObject
+import com.lazzy.testrev.presentation.viewobjects.CurrencyVO
+import com.lazzy.testrev.presentation.viewobjects.convertToViewObject
+import com.lazzy.testrev.util.FlagBitmapFactory
 import io.reactivex.Completable
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -21,12 +23,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+@InjectViewState
 class MainPresenterImpl @Inject constructor(
     private val receiveCurrenciesUseCase: ReceiveCurrenciesUseCase,
     private val flagFactory: FlagBitmapFactory
-) : MainPresenter {
+) : MvpPresenter<MainView>(),
+    MainPresenter {
 
-    private var view: MainView? = null
     private val currentBaseSubject = BehaviorSubject.create<String>()
     private val currentValueSubject = BehaviorSubject.create<Double>()
     private val currenciesSubject = BehaviorSubject.create<List<Currency>>()
@@ -37,16 +40,11 @@ class MainPresenterImpl @Inject constructor(
 
     init {
         receiveData()
-    }
-
-    override fun attachView(view: MainView) {
-        this.view = view
         observeData()
     }
 
-    override fun detachView() {
-        view = null
-        compositeDisposable.clear()
+    override fun onDestroy() {
+        compositeDisposable.dispose()
     }
 
     override fun receiveData() {
@@ -92,10 +90,14 @@ class MainPresenterImpl @Inject constructor(
             .switchMapCompletable { (base, currencies) ->
                 Observable.combineLatest(
                     currentValueSubject,
-                    Observable.interval(1, TimeUnit.SECONDS)
+                    Observable.interval(UPDATE_PERIOD, TimeUnit.SECONDS)
                         .concatMapSingle { receiveCurrenciesUseCase.receiveCurrencies(base) }
                         .doOnError {
-                            stateSubject.onNext(MainPresenter.ScreenState.ErrorUpdating(it))
+                            stateSubject.onNext(
+                                MainPresenter.ScreenState.ErrorUpdating(
+                                    it
+                                )
+                            )
                         }
                         .retry(),
                     BiFunction { currentValue: Double, course: Course -> currentValue to course }
@@ -118,20 +120,27 @@ class MainPresenterImpl @Inject constructor(
                             it.first()
                                 .convertToViewObject(flagFactory, true)
                         ).apply {
-                            addAll(it.drop(1)
+                            addAll(
+                                it.drop(FIRST)
                                 .map { it.convertToViewObject(flagFactory) })
                         }
                     }
                     .flatMapCompletable {
                         Completable.fromAction {
-                            stateSubject.onNext(MainPresenter.ScreenState.UpdateCurrencies(it))
+                            stateSubject.onNext(
+                                MainPresenter.ScreenState.UpdateCurrencies(
+                                    it
+                                )
+                            )
                         }
-                            .andThen { stateSubject.onNext(MainPresenter.ScreenState.UpdatesAllowed) }
+                            .andThen {
+                                stateSubject.onNext(MainPresenter.ScreenState.UpdatesAllowed)
+                            }
                     }
                     .subscribeOn(Schedulers.computation())
             }
             .subscribeOn(Schedulers.computation())
-            .subscribe({}, { Log.e("Exception", it.message ?: it.toString()) })
+            .subscribe({ }, { Log.e("Exception", it.message ?: it.toString()) })
             .composite(compositeDisposable)
 
         stateSubject
@@ -139,19 +148,19 @@ class MainPresenterImpl @Inject constructor(
             .doOnNext {
                 when (it) {
                     is MainPresenter.ScreenState.ErrorUpdating ->
-                        view?.showErrorUpdating()
+                        viewState.showErrorUpdating()
                     is MainPresenter.ScreenState.UpdateCurrencies ->
-                        view?.showCurrencies(it.currencies)
+                        viewState.showCurrencies(it.currencies)
                     is MainPresenter.ScreenState.UpdatesBlocked ->
-                        view?.blockCurrencyUpdates()
+                        viewState.blockCurrencyUpdates()
                     is MainPresenter.ScreenState.UpdatesAllowed ->
-                        view?.allowCurrencyUpdates()
+                        viewState.allowCurrencyUpdates()
                     is MainPresenter.ScreenState.ErrorLoading ->
-                        view?.showErrorScreen()
+                        viewState.showErrorScreen()
                     is MainPresenter.ScreenState.Success ->
-                        view?.showSuccessScreen()
+                        viewState.showSuccessScreen()
                     is MainPresenter.ScreenState.Loading ->
-                        view?.showProgressState()
+                        viewState.showProgressState()
                 }
             }
             .subscribe()
@@ -160,5 +169,12 @@ class MainPresenterImpl @Inject constructor(
 
     private fun Disposable.composite(compositeDisposable: CompositeDisposable) =
         compositeDisposable.add(this)
+
+    companion object {
+
+        private const val FIRST = 1
+        private const val UPDATE_PERIOD = 1L
+
+    }
 
 }

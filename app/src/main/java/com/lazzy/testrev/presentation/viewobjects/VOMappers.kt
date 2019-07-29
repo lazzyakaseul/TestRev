@@ -1,6 +1,7 @@
-package com.lazzy.testrev.viewobjects
+package com.lazzy.testrev.presentation.viewobjects
 
 import com.lazzy.testrev.domain.entity.Currency
+import com.lazzy.testrev.util.FlagBitmapFactory
 import com.lazzy.testrev.util.convertToStringCurrency
 
 

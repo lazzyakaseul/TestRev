@@ -1,4 +1,4 @@
-package com.lazzy.testrev.viewobjects
+package com.lazzy.testrev.util
 
 import android.content.Context
 import android.graphics.Bitmap

@@ -1,4 +1,4 @@
-package com.lazzy.testrev.adapter
+package com.lazzy.testrev.presentation.adapter
 
 import android.support.v7.util.DiffUtil
 import android.support.v7.widget.RecyclerView
@@ -10,7 +10,7 @@ import android.view.ViewGroup
 import android.widget.EditText
 import com.bumptech.glide.Glide
 import com.lazzy.testrev.R
-import com.lazzy.testrev.viewobjects.CurrencyVO
+import com.lazzy.testrev.presentation.viewobjects.CurrencyVO
 import kotlinx.android.synthetic.main.item_currency_layout.view.*
 
 

@@ -1,6 +1,14 @@
-apply plugin: 'java-library'
-apply plugin: 'kotlin'
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-kapt'
+
+android {
+    compileSdkVersion androidCompileSdkVersion
+
+    defaultConfig {
+        buildConfigField "String", "BASE_URL", "\"https://revolut.duckdns.org\""
+    }
+}
 
 dependencies {
     api project(':domain')
@@ -10,11 +18,14 @@ dependencies {
 
     implementation deps.gson
     implementation deps.retrofit
+    implementation deps.okHttpLoggingInterceptor
+    implementation deps.retrofitConverterJson
+    implementation deps.retrofitAdapterRxJava
     implementation deps.daggerAndroidSupport
 
     kapt deps.daggerAndroidProcessor
     kapt deps.daggerCompiler
 }
 
-sourceCompatibility = "7"
-targetCompatibility = "7"
+//sourceCompatibility = "7"
+//targetCompatibility = "7"

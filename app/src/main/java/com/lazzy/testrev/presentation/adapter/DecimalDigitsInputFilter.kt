@@ -1,4 +1,4 @@
-package com.lazzy.testrev.adapter
+package com.lazzy.testrev.presentation.adapter
 
 import android.text.InputFilter
 import android.text.Spanned

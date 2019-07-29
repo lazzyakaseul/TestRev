@@ -1,12 +1,13 @@
-package com.lazzy.testrev
+package com.lazzy.testrev.presentation
 
-import com.lazzy.testrev.viewobjects.CurrencyVO
+import com.lazzy.testrev.presentation.viewobjects.CurrencyVO
+
 
 interface MainPresenter {
 
     fun attachView(view: MainView)
 
-    fun detachView()
+    fun detachView(view: MainView)
 
     fun receiveData()
 
