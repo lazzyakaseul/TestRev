@@ -27,8 +27,7 @@ import javax.inject.Singleton
 class MainPresenterImpl @Inject constructor(
     private val receiveCurrenciesUseCase: ReceiveCurrenciesUseCase,
     private val flagFactory: FlagBitmapFactory
-) : MvpPresenter<MainView>(),
-    MainPresenter {
+) : MvpPresenter<MainView>(), MainPresenter {
 
     private val currentBaseSubject = BehaviorSubject.create<String>()
     private val currentValueSubject = BehaviorSubject.create<Double>()
@@ -49,7 +48,6 @@ class MainPresenterImpl @Inject constructor(
 
     override fun receiveData() {
         stateSubject.onNext(MainPresenter.ScreenState.Loading)
-        @Suppress
         receiveCurrenciesUseCase.receiveCurrencies()
             .doOnSuccess {
                 currentValueSubject.onNext(it.base.value)
@@ -63,6 +61,7 @@ class MainPresenterImpl @Inject constructor(
             .doOnError { stateSubject.onNext(MainPresenter.ScreenState.ErrorLoading) }
             .subscribeOn(Schedulers.computation())
             .subscribe({}, {})
+            .let(compositeDisposable::add)
     }
 
     override fun onCurrencySelected(currency: CurrencyVO) =
@@ -74,20 +73,9 @@ class MainPresenterImpl @Inject constructor(
 
     private fun observeData() {
         currentBaseSubject
+            .observeOn(Schedulers.computation())
             .doOnNext { stateSubject.onNext(MainPresenter.ScreenState.UpdatesBlocked) }
-            .flatMapSingle { base ->
-                currenciesSubject.firstOrError()
-                    .map { base to it }
-            }
-            .map { (base, currencies) ->
-                base to currencies.toMutableList().apply {
-                    find { it.code == base }?.apply {
-                        remove(this)
-                        add(0, this)
-                    }
-                }
-            }
-            .switchMapCompletable { (base, currencies) ->
+            .switchMapCompletable { base ->
                 Observable.combineLatest(
                     currentValueSubject,
                     Observable.interval(UPDATE_PERIOD, TimeUnit.SECONDS)
@@ -102,27 +90,18 @@ class MainPresenterImpl @Inject constructor(
                         .retry(),
                     BiFunction { currentValue: Double, course: Course -> currentValue to course }
                 )
-                    .map { (currentValue, course) ->
-                        currencies.run {
-                            map {
-                                if (base != it.code) {
-                                    Currency(
-                                        it.code,
-                                        course.currencies[it.code]?.times(currentValue) ?: 0.0
-                                    )
-                                } else it.copy(value = currentValue)
-                            }
-                        }
+                    .flatMapSingle { (currentValue, course) ->
+                        currenciesSubject.firstOrError()
+                            .map { Triple(currentValue, course, it) }
+                    }
+                    .map { (currentValue, course, currencies) ->
+                        val jumbledCurrenciesList = moveNewBaseCurrencyToTop(base, currencies)
+                        recalculateAllCurrencies(base, currentValue, course, jumbledCurrenciesList)
                     }
                     .doOnNext { currenciesSubject.onNext(it) }
-                    .map {
-                        mutableListOf(
-                            it.first()
-                                .convertToViewObject(flagFactory, true)
-                        ).apply {
-                            addAll(
-                                it.drop(FIRST)
-                                .map { it.convertToViewObject(flagFactory) })
+                    .map { currencies ->
+                        currencies.map {
+                            it.convertToViewObject(flagFactory, currencies.first() == it)
                         }
                     }
                     .flatMapCompletable {
@@ -137,9 +116,7 @@ class MainPresenterImpl @Inject constructor(
                                 stateSubject.onNext(MainPresenter.ScreenState.UpdatesAllowed)
                             }
                     }
-                    .subscribeOn(Schedulers.computation())
             }
-            .subscribeOn(Schedulers.computation())
             .subscribe({ }, { Log.e("Exception", it.message ?: it.toString()) })
             .composite(compositeDisposable)
 
@@ -167,12 +144,42 @@ class MainPresenterImpl @Inject constructor(
             .composite(compositeDisposable)
     }
 
+    private fun moveNewBaseCurrencyToTop(
+        baseCurrency: String,
+        currencies: List<Currency>
+    ): List<Currency> {
+        return currencies.toMutableList().also { mutableCurrencies ->
+            val base = mutableCurrencies.find { it.code == baseCurrency }
+            if (base != null) {
+                mutableCurrencies.remove(base)
+                mutableCurrencies.add(0, base)
+            }
+        }
+    }
+
+    private fun recalculateAllCurrencies(
+        currentBase: String,
+        currentValue: Double,
+        currentCourse: Course,
+        currencies: List<Currency>
+    ): List<Currency> {
+        return currencies.map {
+            if (currentBase != it.code) {
+                Currency(
+                    code = it.code,
+                    value = currentCourse.currencies[it.code]?.times(currentValue) ?: 0.0
+                )
+            } else {
+                it.copy(value = currentValue)
+            }
+        }
+    }
+
     private fun Disposable.composite(compositeDisposable: CompositeDisposable) =
         compositeDisposable.add(this)
 
     companion object {
 
-        private const val FIRST = 1
         private const val UPDATE_PERIOD = 1L
 
     }
