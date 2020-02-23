@@ -10,7 +10,7 @@ interface CurrenciesInteractor {
 
     fun observeCurrencyUpdates(): Observable<List<Currency>>
 
-    fun changeBaseCurrency(newBase: String): Completable
+    fun changeBaseCurrency(newBase: String)
 
     fun updateSelectedCurrency(newValue: Double)
 

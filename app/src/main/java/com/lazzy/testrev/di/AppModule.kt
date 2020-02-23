@@ -3,6 +3,8 @@ package com.lazzy.testrev.di
 import android.content.Context
 import com.lazzy.testrev.data.CurrenciesRepository
 import com.lazzy.testrev.data.CurrenciesRepositoryImpl
+import com.lazzy.testrev.domain.CurrenciesInteractor
+import com.lazzy.testrev.domain.CurrenciesInteractorImpl
 import com.lazzy.testrev.domain.ReceiveCurrenciesProvider
 import com.lazzy.testrev.domain.ReceiveCurrenciesUseCase
 import com.lazzy.testrev.domain.ReceiveCurrenciesUseCaseImpl
@@ -41,6 +43,8 @@ class AppModule(private val context: Context) {
         @Binds
         fun bindMainPresenter(impl: MainPresenterImpl): MainPresenter
 
+        @Binds
+        fun bindCurrenciesInteractor(impl: CurrenciesInteractorImpl): CurrenciesInteractor
     }
 
 }

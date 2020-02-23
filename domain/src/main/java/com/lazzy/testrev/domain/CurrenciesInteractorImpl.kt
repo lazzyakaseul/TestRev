@@ -10,36 +10,19 @@ import io.reactivex.subjects.BehaviorSubject
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlin.math.round
 
 @Singleton
 class CurrenciesInteractorImpl @Inject constructor(
     private val receiveCurrenciesUseCase: ReceiveCurrenciesUseCase
-) :
-    CurrenciesInteractor {
+) : CurrenciesInteractor {
 
     private val baseSubject = BehaviorSubject.create<String>()
     private val currentValueSubject = BehaviorSubject.create<Double>()
     private val currenciesSubject = BehaviorSubject.create<List<Currency>>()
     private val currentCourseSubject = BehaviorSubject.create<Currencies>()
 
-    @Volatile
-    private var oldBase: String? = null
-
-    override fun changeBaseCurrency(newBase: String): Completable =
-        if (oldBase != null) {
-            baseSubject.firstOrError()
-                .flatMapCompletable {
-                    Completable.fromAction {
-                        oldBase = it
-                        baseSubject.onNext(newBase)
-                    }
-                }
-        } else {
-            Completable.create {
-                baseSubject.onNext(newBase)
-            }
-        }
+    override fun changeBaseCurrency(newBase: String) =
+        baseSubject.onNext(newBase)
 
     override fun updateSelectedCurrency(newValue: Double) {
         currentValueSubject.onNext(newValue)
@@ -76,7 +59,7 @@ class CurrenciesInteractorImpl @Inject constructor(
                     .map { (currentValue, courseCurrencies, currencies) ->
                         val jumbledCurrenciesList = moveNewBaseCurrencyToTop(base, currencies)
                         recalculateAllCurrencies(
-                            oldBase,
+                            base,
                             currentValue,
                             courseCurrencies,
                             jumbledCurrenciesList
@@ -99,33 +82,28 @@ class CurrenciesInteractorImpl @Inject constructor(
     }
 
     private fun recalculateAllCurrencies(
-        oldBase: String?,
+        base: String,
         currentValue: Double,
         courseCurrencies: Currencies,
         currencies: List<Currency>
     ): List<Currency> {
         return currencies.map {
-            if (oldBase != it.code) {
-                val roundedCourseValue = courseCurrencies[it.code]?.apply {
-                    roundDoubleValue(this, TWO_DIGITS_AFTER_ZERO)
-                }
-                val roundedCurrentValue = roundDoubleValue(currentValue, TWO_DIGITS_AFTER_ZERO)
+            if (it.code != base) {
+                val course = (courseCurrencies[it.code] ?: 1.0) / (courseCurrencies[base] ?: 1.0)
                 Currency(
                     code = it.code,
-                    value = roundedCourseValue?.times(roundedCurrentValue) ?: 0.0
+                    value = course * currentValue
                 )
             } else {
-                it.copy(value = currentValue)
+                Currency(
+                    code = it.code,
+                    value = currentValue
+                )
             }
         }
     }
 
-    private fun roundDoubleValue(value: Double, digitsAfterZero: Int): Double {
-        return round(value * digitsAfterZero * 10.0) / (digitsAfterZero * 10.0)
-    }
-
     companion object {
-        private const val TWO_DIGITS_AFTER_ZERO = 2
         private const val UPDATE_PERIOD = 1L
         private const val REPEAT_REQUEST_DELAY = 5L
     }
